@@ -30,7 +30,6 @@ func init() {
 	if err := initCfgFiles(); err != nil {
 		log.Fatalf("子配置初始化失败: %v", err)
 	}
-	log.Println("配置系统初始化成功")
 }
 
 // initConfig 初始化主配置文件

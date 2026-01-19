@@ -27,7 +27,7 @@ echo go mod tidy successful!
 echo.
 
 echo [3/3] Starting server...
-go run .
+go run . shell
 if %errorlevel% neq 0 (
     echo Server startup failed!
     pause

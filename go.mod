@@ -5,12 +5,14 @@ go 1.24.0
 toolchain go1.24.10
 
 require (
+	github.com/chzyer/readline v1.5.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.11.0
 	github.com/redis/go-redis/v9 v9.17.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/spf13/viper v1.21.0
+	github.com/traefik/yaegi v0.16.1
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gorm.io/driver/mysql v1.6.0
