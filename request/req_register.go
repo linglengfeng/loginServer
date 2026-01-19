@@ -49,23 +49,21 @@ const (
 	PathDecodeJwt = "/decodeJwt" // 解码JWT
 )
 
-// getAllRoutes 获取所有路由映射表（path -> Route）
-func getAllRoutes() map[string]Route {
-	return map[string]Route{
-		// out 分组
-		PathGetServerList: {Path: PathGetServerList, Method: MethodGET, Handler: handle_getServerList, IsDebug: false, ApiGroup: ApiGroupOut},
+// routeCache 路由映射表（path -> Route），在包初始化时构建一次，可供整个包复用。
+var routeCache = map[string]Route{
+	// out 分组
+	PathGetServerList: {Path: PathGetServerList, Method: MethodGET, Handler: handle_getServerList, IsDebug: false, ApiGroup: ApiGroupOut},
 
-		// sgame 分组
-		PathTest:              {Path: PathTest, Method: MethodPOST, Handler: handle_test, IsDebug: false, ApiGroup: ApiGroupSgame},
-		PathReportServerList:  {Path: PathReportServerList, Method: MethodPOST, Handler: handle_reportServerList, IsDebug: false, ApiGroup: ApiGroupSgame},
-		PathChangeServerState: {Path: PathChangeServerState, Method: MethodPOST, Handler: handle_changeServerState, IsDebug: false, ApiGroup: ApiGroupSgame},
+	// sgame 分组
+	PathTest:              {Path: PathTest, Method: MethodPOST, Handler: handle_test, IsDebug: false, ApiGroup: ApiGroupSgame},
+	PathReportServerList:  {Path: PathReportServerList, Method: MethodPOST, Handler: handle_reportServerList, IsDebug: false, ApiGroup: ApiGroupSgame},
+	PathChangeServerState: {Path: PathChangeServerState, Method: MethodPOST, Handler: handle_changeServerState, IsDebug: false, ApiGroup: ApiGroupSgame},
 
-		// test 分组
-		PathEncrypt:   {Path: PathEncrypt, Method: MethodPOST, Handler: handle_encrypt, IsDebug: true, ApiGroup: ApiGroupTest},
-		PathDecrypt:   {Path: PathDecrypt, Method: MethodPOST, Handler: handle_decrypt, IsDebug: true, ApiGroup: ApiGroupTest},
-		PathEncodeJwt: {Path: PathEncodeJwt, Method: MethodPOST, Handler: handle_encodejwt, IsDebug: true, ApiGroup: ApiGroupTest},
-		PathDecodeJwt: {Path: PathDecodeJwt, Method: MethodPOST, Handler: handle_decodejwt, IsDebug: true, ApiGroup: ApiGroupTest},
-	}
+	// test 分组
+	PathEncrypt:   {Path: PathEncrypt, Method: MethodPOST, Handler: handle_encrypt, IsDebug: true, ApiGroup: ApiGroupTest},
+	PathDecrypt:   {Path: PathDecrypt, Method: MethodPOST, Handler: handle_decrypt, IsDebug: true, ApiGroup: ApiGroupTest},
+	PathEncodeJwt: {Path: PathEncodeJwt, Method: MethodPOST, Handler: handle_encodejwt, IsDebug: true, ApiGroup: ApiGroupTest},
+	PathDecodeJwt: {Path: PathDecodeJwt, Method: MethodPOST, Handler: handle_decodejwt, IsDebug: true, ApiGroup: ApiGroupTest},
 }
 
 // methodHandlers HTTP 方法到注册函数的映射
@@ -82,8 +80,7 @@ var methodHandlers = map[RouteMethod]func(*gin.Engine, string, ...gin.HandlerFun
 // request 注册所有路由到 Gin 引擎
 func request(req *gin.Engine) {
 	setupMiddleware(req)
-	routes := getAllRoutes()
-	for _, route := range routes {
+	for _, route := range routeCache {
 		if handler, exists := methodHandlers[route.Method]; exists {
 			handler(req, route.Path, route.Handler)
 		}

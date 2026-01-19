@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,10 +48,6 @@ var (
 		MESSAGE: MsgBadRequest,
 		DATA:    nil,
 	}
-
-	// routeCache 路由映射缓存，避免每次请求都重新构建
-	routeCache     map[string]Route
-	routeCacheOnce sync.Once
 )
 
 // retResponse 统一返回响应（支持消息和数据）
@@ -180,14 +175,6 @@ func shouldDisableRoute(c *gin.Context) (bool, string) {
 	return true, ""
 }
 
-// getRouteCache 获取路由缓存（线程安全，只初始化一次）
-func getRouteCache() map[string]Route {
-	routeCacheOnce.Do(func() {
-		routeCache = getAllRoutes()
-	})
-	return routeCache
-}
-
 // checkLimitApi 检查 API 访问限制
 func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 	// 开发环境不限制
@@ -195,9 +182,8 @@ func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 		return true, ""
 	}
 
-	// 从缓存获取路由信息
-	routes := getRouteCache()
-	route, exists := routes[fullpath]
+	// 从全局路由表获取路由信息
+	route, exists := routeCache[fullpath]
 	if !exists {
 		return true, ""
 	}
