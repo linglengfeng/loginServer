@@ -1,0 +1,28 @@
+{
+    "server_mod": "dev",
+    "server_name": "loginServer",
+    "gin": {
+        "ip": "127.0.0.1",
+        "port": "9100",
+        "mod": "debug"
+    },
+    "log": {
+        "level": "debug",
+        "path": "./logs",
+        "remain_day": "60",
+        "showfile": "1",
+        "showfunc": "0"
+    },
+    "mysql": {
+        "ip": "127.0.0.1",
+        "port": "3306",
+        "user": "root",
+        "password": "123456",
+        "db": "loginServer"
+    },
+    "ip_whitelist": {
+        "sgame": [
+            "127.0.0.1"
+        ]
+    }
+}

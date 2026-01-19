@@ -1,0 +1,15 @@
+{
+    "mailer": "qq",
+    
+    "sendgrid": {
+        "username": "example@gmail",
+        "api_key": "sendgrid api key"
+    },
+
+    "qq": {
+        "ip": "smtp.qq.com",
+        "port": "587",
+        "username":"xxx@qq.com",
+        "authcode":"xxx"
+    }
+}
