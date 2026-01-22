@@ -35,12 +35,15 @@ type Route struct {
 // 路由路径常量
 const (
 	// out 分组
-	PathGetServerList = "/loginServer/getServerList" // 获取服务器列表
+	PathGetServerList       = "/loginServer/getServerList"       // 获取服务器列表
+	PathGetPlayerServerList = "/loginServer/getPlayerServerList" // 获取玩家服务器列表
 
 	// sgame 分组
-	PathTest              = "/test"                          // 测试接口
+	PathTest              = "/loginServer/test"              // 测试接口（GET）
+	PathTestPost          = "/loginServer/testPost"          // 测试接口（POST）
 	PathReportServerList  = "/loginServer/reportServerList"  // 游戏服上报服务器列表
 	PathChangeServerState = "/loginServer/changeServerState" // 游戏服服务器状态变更
+	PathSetUserHistory    = "/loginServer/setUserHistory"    // 玩家信息设置
 
 	// test 分组
 	PathEncrypt   = "/encrypt"   // 加密接口
@@ -52,12 +55,15 @@ const (
 // routeCache 路由映射表（path -> Route），在包初始化时构建一次，可供整个包复用。
 var routeCache = map[string]Route{
 	// out 分组
-	PathGetServerList: {Path: PathGetServerList, Method: MethodGET, Handler: handle_getServerList, IsDebug: false, ApiGroup: ApiGroupOut},
+	PathGetServerList:       {Path: PathGetServerList, Method: MethodGET, Handler: handle_getServerList, IsDebug: false, ApiGroup: ApiGroupOut},
+	PathGetPlayerServerList: {Path: PathGetPlayerServerList, Method: MethodGET, Handler: handle_getPlayerServerList, IsDebug: false, ApiGroup: ApiGroupOut},
 
 	// sgame 分组
-	PathTest:              {Path: PathTest, Method: MethodPOST, Handler: handle_test, IsDebug: false, ApiGroup: ApiGroupSgame},
+	PathTest:              {Path: PathTest, Method: MethodGET, Handler: handle_test, IsDebug: true, ApiGroup: ApiGroupSgame},
+	PathTestPost:          {Path: PathTestPost, Method: MethodPOST, Handler: handle_testPost, IsDebug: true, ApiGroup: ApiGroupSgame},
 	PathReportServerList:  {Path: PathReportServerList, Method: MethodPOST, Handler: handle_reportServerList, IsDebug: false, ApiGroup: ApiGroupSgame},
 	PathChangeServerState: {Path: PathChangeServerState, Method: MethodPOST, Handler: handle_changeServerState, IsDebug: false, ApiGroup: ApiGroupSgame},
+	PathSetUserHistory:    {Path: PathSetUserHistory, Method: MethodPOST, Handler: handle_SetUserHistory, IsDebug: false, ApiGroup: ApiGroupSgame},
 
 	// test 分组
 	PathEncrypt:   {Path: PathEncrypt, Method: MethodPOST, Handler: handle_encrypt, IsDebug: true, ApiGroup: ApiGroupTest},

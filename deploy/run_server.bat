@@ -1,19 +1,11 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo Starting Login Server (Foreground)
+echo Starting Login Server
 echo ========================================
 echo.
 
-REM 切到脚本所在目录，确保使用本目录下的二进制
-cd /d "%~dp0"
-if %errorlevel% neq 0 (
-    echo Failed to change to script directory!
-    pause
-    exit /b 1
-)
-
-echo [1/2] Initializing database...
+echo [1/3] Initializing database...
 mysql -hlocalhost -P3306 -uroot -p123456 -e "source ..\\sql\\server.sql"
 if %errorlevel% neq 0 (
     echo Database initialization failed!
@@ -23,21 +15,23 @@ if %errorlevel% neq 0 (
 echo Database initialization successful!
 echo.
 
-echo [2/2] Starting server (foreground)...
-REM 切换到 loginServer 目录
-cd /d "%~dp0.."
+echo [2/3] Running go mod tidy...
+cd ..
+go mod tidy
 if %errorlevel% neq 0 (
-    echo Failed to change to loginServer directory!
+    echo go mod tidy failed!
     pause
     exit /b 1
 )
+echo go mod tidy successful!
+echo.
 
-REM 前台运行服务器
-go run .
+echo [3/3] Starting server...
+go run . shell
 if %errorlevel% neq 0 (
-    echo Server exited with error code: %errorlevel%
+    echo Server startup failed!
     pause
-    exit /b %errorlevel%
+    exit /b 1
 )
 
 pause

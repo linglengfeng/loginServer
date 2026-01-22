@@ -64,29 +64,6 @@ func retResponse(resp gin.H, message string, data any) gin.H {
 	return resp
 }
 
-// JsonBody 解析请求体中的 JSON 数据
-func JsonBody(c *gin.Context) (map[string]any, error) {
-	var params map[string]any
-	if err := c.ShouldBindJSON(&params); err != nil {
-		return nil, err
-	}
-	return params, nil
-}
-
-// FormBody 解析请求中的表单数据
-func FormBody(c *gin.Context) (map[string]any, error) {
-	if err := c.Request.ParseForm(); err != nil {
-		return nil, err
-	}
-	params := make(map[string]any, len(c.Request.PostForm))
-	for key, values := range c.Request.PostForm {
-		if len(values) > 0 {
-			params[key] = values[0]
-		}
-	}
-	return params, nil
-}
-
 // setupMiddleware 设置中间件
 func setupMiddleware(req *gin.Engine) {
 	req.Use(func(c *gin.Context) {
