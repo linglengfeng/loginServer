@@ -114,7 +114,21 @@ func getClientIP(c *gin.Context) string {
 
 // checkIPWhitelist 检查IP是否在白名单中
 // 支持精确匹配和CIDR格式（如 192.168.1.0/24）
+// 参数 allowedIPs 的含义：
+//   - nil: 配置不存在，返回 true（允许所有 IP 访问）
+//   - []: 配置存在但为空列表，返回 false（不允许任何 IP 访问）
+//   - [ip1, ip2, ...]: 检查 IP 是否在列表中
 func checkIPWhitelist(clientIP string, allowedIPs []string) bool {
+	// 如果 allowedIPs 为 nil，表示配置不存在，允许所有 IP 访问
+	if allowedIPs == nil {
+		return true
+	}
+
+	// 如果 allowedIPs 为空列表，表示配置存在但为空，不允许任何 IP 访问
+	if len(allowedIPs) == 0 {
+		return false
+	}
+
 	clientIPAddr := net.ParseIP(clientIP)
 	if clientIPAddr == nil {
 		return false
@@ -184,12 +198,20 @@ func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 }
 
 // getAllowedIPsByGroup 根据API分组获取IP白名单
-// 如果配置不存在或为空，返回 nil 表示不限制IP
+// 返回值和含义：
+//   - nil: 配置不存在，表示不限制IP（允许所有访问）
+//   - []: 配置存在但为空列表，表示不允许任何IP访问
+//   - [ip1, ip2, ...]: 配置了白名单IP列表
 func getAllowedIPsByGroup(apiGroup string) []string {
 	configKey := "ip_whitelist." + apiGroup
-	ips := config.Config.GetStringSlice(configKey)
-	if len(ips) == 0 {
+
+	// 检查配置键是否存在
+	if !config.Config.IsSet(configKey) {
+		// 配置不存在，返回 nil 表示不限制IP（允许所有访问）
 		return nil
 	}
+
+	// 配置存在，获取IP列表（可能为空列表）
+	ips := config.Config.GetStringSlice(configKey)
 	return ips
 }
