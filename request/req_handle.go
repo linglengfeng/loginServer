@@ -17,10 +17,10 @@ func handle_getServerList(c *gin.Context) {
 	servers, err := GetServerList()
 	if err != nil {
 		log.Error("handle_getServerList failed, err: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseError, "获取服务器列表失败", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "获取服务器列表失败", nil))
 		return
 	}
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", servers))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", servers))
 }
 
 // 获取玩家服务器列表处理函数
@@ -28,12 +28,12 @@ func handle_getPlayerServerList(c *gin.Context) {
 	accountId, ok1 := c.GetPostForm("account_id")
 
 	if !ok1 {
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, "缺少必填参数: cluster_id 或 game_id", nil))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "缺少必填参数: cluster_id 或 game_id", nil))
 		return
 	}
 	// 如果获取不到，说明没登录或者中间件有问题
 	if accountId == "" {
-		c.JSON(http.StatusOK, retResponse(ResponseError, "请求参数错误", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "请求参数错误", nil))
 		return
 	}
 
@@ -41,11 +41,11 @@ func handle_getPlayerServerList(c *gin.Context) {
 	playerHistory, err := db.GetUserHistory(accountId)
 	if err != nil {
 		log.Error("handle_getPlayerServerList failed, err: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseError, "获取服务器列表失败", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "获取服务器列表失败", nil))
 		return
 	}
 
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", playerHistory))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", playerHistory))
 }
 
 // ReportServerReq 上报/注册接口的参数
@@ -75,12 +75,12 @@ func handle_reportServerList(c *gin.Context) {
 	// 2. 解析 JSON 数组
 	if err := c.ShouldBindJSON(&reqs); err != nil {
 		log.Warn("Bind JSON List failed: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, "参数错误", nil))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误", nil))
 		return
 	}
 
 	if len(reqs) == 0 {
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, "列表为空", nil))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, "列表为空", nil))
 		return
 	}
 
@@ -108,11 +108,11 @@ func handle_reportServerList(c *gin.Context) {
 	err := db.BatchUpdateServerInfo(serverModels)
 	if err != nil {
 		log.Error("handle_reportServerList batch db err: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseError, "批量上报失败", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "批量上报失败", nil))
 		return
 	}
 
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "批量上报成功", nil))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "批量上报成功", nil))
 }
 
 // ChangeStateReq 变更状态接口的参数
@@ -128,7 +128,7 @@ func handle_changeServerState(c *gin.Context) {
 
 	// 1. 解析 JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, "参数错误: 需要 cluster_id, game_id, state", nil))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误: 需要 cluster_id, game_id, state", nil))
 		return
 	}
 
@@ -136,11 +136,11 @@ func handle_changeServerState(c *gin.Context) {
 	err := db.UpdateServerState(req.ClusterID, req.GameID, req.State)
 	if err != nil {
 		log.Error("handle_changeServerState db err: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseError, "状态更新失败", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "状态更新失败", nil))
 		return
 	}
 
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "上报成功", nil))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "上报成功", nil))
 }
 
 // SetHistoryReq 定义请求参数结构体
@@ -168,7 +168,7 @@ func handle_SetUserHistory(c *gin.Context) {
 	// 如果必填参数缺失，err 会不为空
 	if err := c.ShouldBind(&req); err != nil {
 		log.Warn("handle_SetUserHistory bind params failed: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, "参数错误或缺失", nil))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误或缺失", nil))
 		return
 	}
 
@@ -185,11 +185,11 @@ func handle_SetUserHistory(c *gin.Context) {
 	err := db.SetUserHistory(req.AccountID, &newItem)
 	if err != nil {
 		log.Error("handle_SetUserHistory db err: %v", err)
-		c.JSON(http.StatusOK, retResponse(ResponseError, "保存历史记录失败", nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, "保存历史记录失败", nil))
 		return
 	}
 
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "上报成功", nil))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "上报成功", nil))
 }
 
 // 测试接口处理函数（GET），能够测试所有的返回情况
@@ -231,7 +231,7 @@ func handle_test(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, message, data))
 		return
 
 	case "error":
@@ -244,7 +244,7 @@ func handle_test(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseError, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeError, message, data))
 		return
 
 	case "param_error":
@@ -257,7 +257,7 @@ func handle_test(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, message, data))
 		return
 
 	case "all":
@@ -270,7 +270,7 @@ func handle_test(c *gin.Context) {
 				"with_data":    "是否包含数据：true/false（默认 true）",
 			},
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", allCases))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, "", allCases))
 		return
 
 	default:
@@ -288,7 +288,7 @@ func handle_test(c *gin.Context) {
 				data = testData
 			}
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, message, data))
 	}
 }
 
@@ -331,7 +331,7 @@ func handle_testPost(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, message, data))
 		return
 
 	case "error":
@@ -344,7 +344,7 @@ func handle_testPost(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseError, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeError, message, data))
 		return
 
 	case "param_error":
@@ -357,7 +357,7 @@ func handle_testPost(c *gin.Context) {
 		if withData {
 			data = testData
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseBadRequest, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, message, data))
 		return
 
 	case "all":
@@ -370,7 +370,7 @@ func handle_testPost(c *gin.Context) {
 				"with_data":    "是否包含数据：true/false（默认 true）",
 			},
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", allCases))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, "", allCases))
 		return
 
 	default:
@@ -388,7 +388,7 @@ func handle_testPost(c *gin.Context) {
 				data = testData
 			}
 		}
-		c.JSON(http.StatusOK, retResponse(ResponseSuccess, message, data))
+		c.JSON(http.StatusOK, retResponse(CodeSuccess, message, data))
 	}
 }
 
@@ -396,60 +396,60 @@ func handle_testPost(c *gin.Context) {
 func handle_encrypt(c *gin.Context) {
 	info := c.PostForm("info")
 	if info == "" {
-		c.JSON(http.StatusOK, ResponseBadRequest)
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数 info 不能为空", nil))
 		return
 	}
 
 	infostr, err := crypto.Encrypt(info)
 	if err != nil {
-		c.JSON(http.StatusOK, retResponse(ResponseError, fmt.Sprintf("加密失败: %s", err.Error()), nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, fmt.Sprintf("加密失败: %s", err.Error()), nil))
 		return
 	}
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", infostr))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", infostr))
 }
 
 // 解密处理函数，对传入的加密信息进行解密
 func handle_decrypt(c *gin.Context) {
 	info := c.PostForm("info")
 	if info == "" {
-		c.JSON(http.StatusOK, ResponseBadRequest)
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数 info 不能为空", nil))
 		return
 	}
 	infostr, err := crypto.Decrypt(info)
 	if err != nil {
-		c.JSON(http.StatusOK, retResponse(ResponseError, fmt.Sprintf("解密失败: %s", err.Error()), nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, fmt.Sprintf("解密失败: %s", err.Error()), nil))
 		return
 	}
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", infostr))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", infostr))
 }
 
 // JWT 编码处理函数，将信息编码为 JWT Token
 func handle_encodejwt(c *gin.Context) {
 	info := c.PostForm("info")
 	if info == "" {
-		c.JSON(http.StatusOK, ResponseBadRequest)
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数 info 不能为空", nil))
 		return
 	}
 	mapinfo := map[string]any{"token": info}
 	token, err := jwt.EncodeJwt(mapinfo)
 	if err != nil {
-		c.JSON(http.StatusOK, retResponse(ResponseError, fmt.Sprintf("JWT编码失败: %s", err.Error()), nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, fmt.Sprintf("JWT编码失败: %s", err.Error()), nil))
 		return
 	}
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", token))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", token))
 }
 
 // JWT 解码处理函数，将 JWT Token 解码为原始信息
 func handle_decodejwt(c *gin.Context) {
 	info := c.PostForm("info")
 	if info == "" {
-		c.JSON(http.StatusOK, ResponseBadRequest)
+		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数 info 不能为空", nil))
 		return
 	}
 	tokeninfo, err := jwt.DecodeJwt(info)
 	if err != nil {
-		c.JSON(http.StatusOK, retResponse(ResponseError, fmt.Sprintf("JWT解码失败: %s", err.Error()), nil))
+		c.JSON(http.StatusOK, retResponse(CodeError, fmt.Sprintf("JWT解码失败: %s", err.Error()), nil))
 		return
 	}
-	c.JSON(http.StatusOK, retResponse(ResponseSuccess, "", tokeninfo))
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", tokeninfo))
 }

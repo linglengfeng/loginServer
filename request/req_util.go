@@ -10,12 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	// 响应字段名
-	STATUS  = "status"  // 状态码字段（符合 HTTP 标准命名）
-	MESSAGE = "message" // 消息字段
-	DATA    = "data"    // 数据字段
+// 统一响应结构
+type Response struct {
+	Status  int         `json:"status"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
 
+const (
 	// 业务状态码（使用正数，符合 HTTP 状态码范围规范）
 	CodeSuccess    = 0    // 成功
 	CodeError      = 1001 // 一般错误
@@ -27,39 +29,33 @@ const (
 	MsgBadRequest = "parameter error"
 )
 
-var (
-	// 成功响应模板
-	ResponseSuccess = gin.H{
-		STATUS:  CodeSuccess,
-		MESSAGE: MsgSuccess,
-		DATA:    nil,
-	}
-
-	// 失败响应模板
-	ResponseError = gin.H{
-		STATUS:  CodeError,
-		MESSAGE: MsgError,
-		DATA:    nil,
-	}
-
-	// 参数错误响应模板
-	ResponseBadRequest = gin.H{
-		STATUS:  CodeBadRequest,
-		MESSAGE: MsgBadRequest,
-		DATA:    nil,
-	}
-)
-
 // retResponse 统一返回响应（支持消息和数据）
-// resp: 响应模板
-// message: 消息内容，为空则不设置
+// code: 业务状态码
+// message: 调用方自定义消息，为空时使用该 code 对应的默认消息
 // data: 数据内容，为 nil 则不设置
-func retResponse(resp gin.H, message string, data any) gin.H {
-	if message != "" {
-		resp[MESSAGE] = message
+func retResponse(code int, message string, data any) Response {
+	resp := Response{
+		Status: code,
 	}
+
+	// 优先使用自定义 message，没有就用该 code 对应的默认消息
+	if message == "" {
+		switch code {
+		case CodeSuccess:
+			resp.Message = MsgSuccess
+		case CodeError:
+			resp.Message = MsgError
+		case CodeBadRequest:
+			resp.Message = MsgBadRequest
+		default:
+			resp.Message = ""
+		}
+	} else {
+		resp.Message = message
+	}
+
 	if data != nil {
-		resp[DATA] = data
+		resp.Data = data
 	}
 	return resp
 }
@@ -81,7 +77,7 @@ func setupMiddleware(req *gin.Engine) {
 		allowed, errMsg := shouldDisableRoute(c)
 		if !allowed {
 			log.Info("request can't used, err:%v", errMsg)
-			c.JSON(http.StatusOK, retResponse(ResponseBadRequest, errMsg, nil))
+			c.JSON(http.StatusOK, retResponse(CodeBadRequest, errMsg, nil))
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
