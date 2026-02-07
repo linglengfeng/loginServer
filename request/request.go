@@ -2,8 +2,11 @@ package request
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"loginServer/config"
 	"loginServer/src/log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -39,6 +42,8 @@ func createHTTPServer(addr string, handler http.Handler) *http.Server {
 // Start 启动 HTTP 服务器
 func Start() {
 	initCache()
+	// 初始化IP白名单（优先从数据库加载，失败则从配置文件加载）
+	InitWhitelistFromDB()
 
 	// 获取并设置 Gin 运行模式
 	ginmod := config.Config.GetString("gin.mod")
@@ -49,7 +54,25 @@ func Start() {
 	req := gin.Default()
 	request(req)
 
-	addr := config.Config.GetString("gin.ip") + ":" + config.Config.GetString("gin.port")
+	// 1. 获取配置中的 IP
+	ip := config.Config.GetString("gin.ip")
+	port := config.Config.GetString("gin.port")
+
+	// 2. 判断是否需要获取真实局域网 IP
+	if ip == "" || ip == "127.0.0.1" || ip == "localhost" {
+		realIP, err := getLocalIPv4()
+		if err != nil {
+			log.Error("获取本地真实IPv4失败，回退到 127.0.0.1: %v", err)
+			ip = "127.0.0.1"
+		} else {
+			ip = realIP
+			log.Info("检测到本地 IP，服务将绑定到: %s", ip)
+		}
+	}
+
+	// 3. 拼接地址 (注意：这里必须使用变量 ip，而不是再去读 config)
+	addr := fmt.Sprintf("%s:%s", ip, port)
+
 	server := createHTTPServer(addr, req)
 
 	// 启动服务器
@@ -102,4 +125,24 @@ func gracefulExitServer(server *http.Server) {
 	} else {
 		log.Info("HTTP server shutdown successfully, took: %v", time.Since(startTime))
 	}
+}
+
+// getLocalIPv4 获取本机首个非回环的 IPv4 地址
+func getLocalIPv4() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, address := range addrs {
+		// 检查 ip 地址判断是否回环地址
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			// 必须是 IPv4
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "", errors.New("cannot find local IP address")
 }

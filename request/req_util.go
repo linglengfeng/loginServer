@@ -77,8 +77,7 @@ func setupMiddleware(req *gin.Engine) {
 		allowed, errMsg := shouldDisableRoute(c)
 		if !allowed {
 			log.Info("request can't used, err:%v", errMsg)
-			c.JSON(http.StatusOK, retResponse(CodeBadRequest, errMsg, nil))
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, retResponse(CodeBadRequest, errMsg, nil))
 			return
 		}
 		c.Next()
@@ -154,7 +153,11 @@ func checkIPWhitelist(clientIP string, allowedIPs []string) bool {
 
 // shouldDisableRoute 检查路由是否应该被禁用
 func shouldDisableRoute(c *gin.Context) (bool, string) {
+	// 在中间件中，FullPath() 可能为空（路由还未匹配），使用 Request.URL.Path
 	fullpath := c.FullPath()
+	if fullpath == "" {
+		fullpath = c.Request.URL.Path
+	}
 	allowed, errMsg := checkLimitApi(fullpath, c)
 	if !allowed {
 		return false, errMsg
@@ -185,7 +188,6 @@ func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 		allowedIPs := getAllowedIPsByGroup(route.ApiGroup)
 		clientIP := getClientIP(c)
 		if !checkIPWhitelist(clientIP, allowedIPs) {
-			log.Info("IP不允许访问: %s, 路径: %s", clientIP, fullpath)
 			return false, "IP不在白名单中"
 		}
 	}
@@ -199,15 +201,6 @@ func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 //   - []: 配置存在但为空列表，表示不允许任何IP访问
 //   - [ip1, ip2, ...]: 配置了白名单IP列表
 func getAllowedIPsByGroup(apiGroup string) []string {
-	configKey := "ip_whitelist." + apiGroup
-
-	// 检查配置键是否存在
-	if !config.Config.IsSet(configKey) {
-		// 配置不存在，返回 nil 表示不限制IP（允许所有访问）
-		return nil
-	}
-
-	// 配置存在，获取IP列表（可能为空列表）
-	ips := config.Config.GetStringSlice(configKey)
-	return ips
+	// 使用动态白名单管理器
+	return GetAllowedIPsByGroup(apiGroup)
 }

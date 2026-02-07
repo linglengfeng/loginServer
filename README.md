@@ -88,13 +88,26 @@ loginServer/
 - 基于 Gin 框架
 - 支持优雅关闭（Graceful Shutdown）
 - 可配置的请求超时和连接管理
-- IP 白名单中间件支持
+- IP 白名单中间件支持（按 API 分组管理，支持 CIDR 格式）
 - CORS 跨域支持
+
+### IP 白名单管理
+- **数据库存储**: 白名单数据持久化到 MySQL 数据库
+- **动态管理**: 支持通过 API 动态添加、删除、查询白名单
+- **按分组管理**: 支持按 API 分组（sgame、adminServer、out、test）分别配置白名单
+- **CIDR 支持**: 支持单个 IP 和 CIDR 网段格式（如 `192.168.1.0/24`）
+- **配置同步**: 启动时自动将配置文件中的白名单同步到数据库
+- **缓存加速**: 使用内存缓存提升白名单查询性能
 
 ### 数据库支持
 - MySQL: 基于 GORM，支持连接池管理
 - Redis: 基于 go-redis，支持连接池和超时配置
 - 自动初始化数据库连接
+- **数据表**:
+  - `game_list`: 游戏服务器列表
+  - `user_player_history`: 玩家历史记录
+  - `login_notice`: 登录公告配置
+  - `ip_whitelist`: IP 白名单配置（支持按 API 分组管理）
 
 ### 邮件服务
 - 支持多种邮件服务商（QQ 邮箱、SendGrid）
@@ -163,8 +176,14 @@ mysql -hlocalhost -P3306 -uroot -p123456 -e "source sql/server.sql"
     },
     "ip_whitelist": {
         "sgame": [
-            "127.0.0.1"
-        ]
+            "127.0.0.1",
+            "192.168.1.0/24"
+        ],
+        "adminServer": [
+            "10.0.1.141"
+        ],
+        "out": [],
+        "test": []
     }
 }
 ```
@@ -234,7 +253,9 @@ cd deploy
 | `log.showfunc` | 是否显示函数名 | `0` / `1` |
 | `mysql.*` | MySQL 连接配置 | - |
 | `redis.*` | Redis 连接配置（可选） | - |
-| `ip_whitelist` | IP 白名单配置 | 按 API 分组配置 |
+| `ip_whitelist` | IP 白名单初始配置 | 按 API 分组配置，启动时自动同步到数据库 |
+
+**注意**: `ip_whitelist` 配置项用于初始配置，启动时会自动将配置中的白名单同步到数据库。后续的白名单管理应通过 API 接口进行，数据存储在数据库中。
 
 ### 邮件服务配置 (config/cfg/mailer.json)
 
@@ -243,6 +264,10 @@ cd deploy
 | `mailer` | 邮件服务类型 | `qq` / `sendgrid` |
 | `qq.*` | QQ 邮箱 SMTP 配置 | - |
 | `sendgrid.*` | SendGrid API 配置 | - |
+
+### IP 白名单配置说明
+
+IP 白名单支持按 API 分组管理，支持单个 IP 和 CIDR 网段格式。配置中的白名单会在启动时自动同步到数据库，后续可通过 `/loginServer/whitelist/` 接口动态管理。
 
 ## 开发模式
 
@@ -314,13 +339,17 @@ tail -f deploy/loginServer.log
 
 ```
 main.go
-  ├── log.Start()          # 初始化日志系统
-  ├── db.Start()           # 初始化数据库连接（MySQL + Redis）
-  ├── mailer.Start()       # 初始化邮件服务
-  └── request.Start()      # 启动 HTTP 服务器
-      ├── initCache()      # 初始化缓存
-      ├── setupMiddleware() # 设置中间件
-      └── registerRoutes()  # 注册路由
+  ├── log.Start()              # 初始化日志系统
+  ├── db.Start()               # 初始化数据库连接（MySQL + Redis）
+  ├── mailer.Start()           # 初始化邮件服务
+  └── request.Start()          # 启动 HTTP 服务器
+      ├── initCache()          # 初始化缓存（服务器列表）
+      ├── InitWhitelistFromDB() # 初始化IP白名单
+      │   ├── 从数据库加载白名单
+      │   ├── 检查配置文件并同步缺失的IP
+      │   └── 写入缓存
+      ├── setupMiddleware()     # 设置中间件（包含IP白名单验证）
+      └── registerRoutes()      # 注册路由
 ```
 
 ### 请求处理流程
@@ -329,7 +358,11 @@ main.go
 HTTP Request
   ├── 中间件层
   │   ├── CORS 处理
-  │   ├── IP 白名单验证（可选）
+  │   ├── IP 白名单验证
+  │   │   ├── 获取路由的 API 分组
+  │   │   ├── 从缓存查询该分组的白名单
+  │   │   ├── 验证客户端 IP（支持 CIDR 匹配）
+  │   │   └── 拒绝或允许访问
   │   └── 请求日志记录
   ├── 路由匹配
   ├── 处理器执行
@@ -342,8 +375,12 @@ HTTP Request
 ### 缓存机制
 
 - **缓存策略**: 内存缓存 + 懒加载
-- **线程安全**: 使用 `sync.RWMutex` 实现读写锁
+- **线程安全**: 使用 `go-cache` 实现线程安全的缓存
 - **缓存更新**: 支持手动刷新缓存
+- **白名单缓存**: 
+  - 启动时从数据库加载到缓存
+  - 修改操作时自动更新缓存
+  - 确保缓存与数据库数据一致
 
 ## 日志管理
 

@@ -6,15 +6,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
+var (
 	// Mailer 邮件配置标识
 	Mailer = "mailer"
 
-	// configDir 子配置文件目录
+	// configDir 子配置文件目录（可通过 config.json 中的 config_dir 字段覆盖）
 	configDir = "./config/cfg"
-)
 
-var (
 	// Config 主配置文件实例
 	Config *viper.Viper
 
@@ -41,6 +39,11 @@ func initConfig() error {
 
 	if err := Config.ReadInConfig(); err != nil {
 		return err
+	}
+
+	// 支持在 config.json 中通过 "config_dir" 字段自定义子配置目录
+	if dir := Config.GetString("config_dir"); dir != "" {
+		configDir = dir
 	}
 
 	return nil

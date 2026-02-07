@@ -41,13 +41,14 @@ type Logger struct {
 }
 
 var (
-	DEBUG         Logger
-	INFO          Logger
-	WARN          Logger
-	ERROR         Logger
+	DEBUG         *Logger
+	INFO          *Logger
+	WARN          *Logger
+	ERROR         *Logger
 	fileLock      sync.RWMutex
 	levelFileList = [4]string{prefixDebug, prefixInfo, prefixWarn, prefixError}
 	LogCfgValue   LogCfg
+	cronJob       *cron.Cron
 )
 
 type formatLogInfo struct {
@@ -67,36 +68,48 @@ type LogCfg struct {
 }
 
 // Start 初始化日志系统
-func Start(logcfg LogCfg) {
+func Start(logcfg LogCfg) error {
 	LogCfgValue = logcfg
-	createLogFile()
+	if err := createLogFile(); err != nil {
+		return err
+	}
 	logLevel := LogCfgValue.Loglv
 	logFilePath := LogCfgValue.Path
-	DEBUG = NewLogger(logLevel, levelDebug, logFilePath)
-	INFO = NewLogger(logLevel, levelInfo, logFilePath)
-	WARN = NewLogger(logLevel, levelWarn, logFilePath)
-	ERROR = NewLogger(logLevel, levelError, logFilePath)
-	go logJob()
+	var err error
+	if DEBUG, err = NewLogger(logLevel, levelDebug, logFilePath); err != nil {
+		return err
+	}
+	if INFO, err = NewLogger(logLevel, levelInfo, logFilePath); err != nil {
+		return err
+	}
+	if WARN, err = NewLogger(logLevel, levelWarn, logFilePath); err != nil {
+		return err
+	}
+	if ERROR, err = NewLogger(logLevel, levelError, logFilePath); err != nil {
+		return err
+	}
+	startLogJob()
+	return nil
 }
 
 // NewLogger 创建新的日志记录器
-func NewLogger(level string, selfLv string, path string) Logger {
+func NewLogger(level string, selfLv string, path string) (*Logger, error) {
 	now := time.Now()
 	postFix := now.Format("20060102")
 	prefix := getPrefixByLevel(selfLv)
 	filename := logfilename(LogCfgValue.Path, prefix, postFix)
 
-	l := Logger{time: now, level: level, path: path, filename: filename, self_lv: selfLv}
+	l := &Logger{time: now, level: level, path: path, filename: filename, self_lv: selfLv}
 	f, err := os.OpenFile(l.filename, os.O_WRONLY|os.O_CREATE|os.O_SYNC|os.O_APPEND, 0755)
 	if err != nil {
-		panic(fmt.Errorf("error opening file: %v", err))
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 
 	iow := getWriterByIoWay(LogCfgValue.Ioway, f)
 	logger := createSlogLogger(level, iow)
 	l.logger = logger
 	l.fd = f
-	return l
+	return l, nil
 }
 
 // getPrefixByLevel 根据日志级别获取文件前缀
@@ -148,8 +161,11 @@ func createSlogLogger(level string, writer io.Writer) *slog.Logger {
 }
 
 // GetLogger 根据日志级别获取日志记录器
-func GetLogger(logLv string) Logger {
-	var loggerInfo Logger
+func GetLogger(logLv string) *Logger {
+	fileLock.Lock()
+	defer fileLock.Unlock()
+
+	var loggerInfo *Logger
 	switch logLv {
 	case levelDebug:
 		loggerInfo = DEBUG
@@ -162,8 +178,37 @@ func GetLogger(logLv string) Logger {
 	default:
 		loggerInfo = DEBUG
 	}
-	if !isOneDay(loggerInfo.time) {
-		loggerInfo = NewLogger(loggerInfo.level, loggerInfo.self_lv, loggerInfo.path)
+
+	// 日切轮转：创建新 logger，并关闭旧文件句柄，避免 fd 泄露
+	if loggerInfo != nil && !isOneDay(loggerInfo.time) {
+		old := loggerInfo
+		newLogger, err := NewLogger(old.level, old.self_lv, old.path)
+		if err == nil {
+			loggerInfo = newLogger
+		} else {
+			// 轮转失败时继续用旧 logger，避免影响业务打印日志
+			loggerInfo = old
+		}
+		switch logLv {
+		case levelDebug:
+			DEBUG = loggerInfo
+		case levelInfo:
+			INFO = loggerInfo
+		case levelWarn:
+			WARN = loggerInfo
+		case levelError:
+			ERROR = loggerInfo
+		default:
+			DEBUG = loggerInfo
+		}
+		if old.fd != nil {
+			_ = old.fd.Sync()
+			_ = old.fd.Close()
+		}
+	}
+	if loggerInfo == nil {
+		// 未初始化时兜底：输出到 stdout
+		return &Logger{logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))}
 	}
 	return loggerInfo
 }
@@ -217,24 +262,22 @@ func Format(format string, a ...any) formatLogInfo {
 	return formatLogInfo{msg: msgStr, file: codeStr, funcName: funcName}
 }
 
-// logJob 定时任务：创建新日志文件、关闭旧文件、删除过期日志
-func logJob() {
+// startLogJob 启动定时任务：创建新日志文件、删除过期日志
+func startLogJob() {
+	fileLock.Lock()
+	defer fileLock.Unlock()
+	if cronJob != nil {
+		return
+	}
 	c := cron.New(cron.WithSeconds())
 	spec := "@daily"
 	c.AddFunc(spec, func() {
 		Warn("执行log定时任务。。。")
 		now := time.Now()
-		createLogFile()
+		_ = createLogFile()
 
-		// 关闭昨天的日志文件
+		// 删除 n 天前的日志（文件句柄关闭由 GetLogger 轮转时处理）
 		for _, filePrefix := range levelFileList {
-			yesterdayFile := logfilename(LogCfgValue.Path, filePrefix, now.Add(-24*time.Hour).Format("20060102"))
-			if file, err := os.Open(yesterdayFile); err == nil {
-				file.Sync()
-				file.Close()
-			}
-
-			// 删除n天前的日志
 			deleteDay := LogCfgValue.Remain_day
 			removeLogFile := logfilename(LogCfgValue.Path, filePrefix,
 				now.Add(time.Duration(-deleteDay)*24*time.Hour).Format("20060102"))
@@ -244,6 +287,7 @@ func logJob() {
 		}
 	})
 	c.Start()
+	cronJob = c
 }
 
 // IsExist 检查文件或目录是否存在
@@ -261,7 +305,7 @@ func isDir(fileAddr string) bool {
 }
 
 // createLogFile 创建日志文件
-func createLogFile() {
+func createLogFile() error {
 	fileLock.Lock()
 	defer fileLock.Unlock()
 	now := time.Now()
@@ -269,17 +313,18 @@ func createLogFile() {
 	logFilePath := LogCfgValue.Path
 	if !isDir(logFilePath) {
 		if err := os.MkdirAll(logFilePath, 0755); err != nil {
-			panic(fmt.Errorf("创建日志目录失败: %v", err))
+			return fmt.Errorf("创建日志目录失败: %w", err)
 		}
 	}
 	for _, filePrefix := range levelFileList {
 		logFile := logfilename(logFilePath, filePrefix, postFix)
 		f, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_SYNC|os.O_APPEND, 0755)
 		if err != nil {
-			panic(fmt.Errorf("创建日志文件失败: %v, error: %v", logFile, err))
+			return fmt.Errorf("创建日志文件失败: %s, error: %w", logFile, err)
 		}
 		f.Close()
 	}
+	return nil
 }
 
 // logfilename 生成日志文件名

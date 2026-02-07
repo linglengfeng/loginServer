@@ -22,9 +22,12 @@
     },
     "ip_whitelist": {
         "sgame": [
+            "127.0.0.1"
         ],
         "adminServer": [
+            "127.0.0.1"
         ]
+
     },
-    "config_dir": "./config/cfg"
+    "config_dir": "../config/cfg"
 }
