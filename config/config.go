@@ -7,26 +7,14 @@ import (
 )
 
 var (
-	// Mailer 邮件配置标识
-	Mailer = "mailer"
-
-	// configDir 子配置文件目录（可通过 config.json 中的 config_dir 字段覆盖）
-	configDir = "./config/cfg"
-
 	// Config 主配置文件实例
 	Config *viper.Viper
-
-	// Cfg 子配置文件映射表
-	Cfg = make(map[string]*viper.Viper)
 )
 
 // init 初始化配置系统
 func init() {
 	if err := initConfig(); err != nil {
 		log.Fatalf("配置初始化失败: %v", err)
-	}
-	if err := initCfgFiles(); err != nil {
-		log.Fatalf("子配置初始化失败: %v", err)
 	}
 }
 
@@ -41,60 +29,7 @@ func initConfig() error {
 		return err
 	}
 
-	// 支持在 config.json 中通过 "config_dir" 字段自定义子配置目录
-	if dir := Config.GetString("config_dir"); dir != "" {
-		configDir = dir
-	}
-
 	return nil
-}
-
-// initCfgFiles 初始化所有子配置文件
-func initCfgFiles() error {
-	// 定义需要加载的子配置文件列表
-	cfgFiles := []string{Mailer}
-
-	for _, cfgName := range cfgFiles {
-		if err := loadCfgFile(cfgName); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// loadCfgFile 加载指定的子配置文件
-func loadCfgFile(cfgName string) error {
-	v := viper.New()
-	v.AddConfigPath(configDir)
-	v.SetConfigName(cfgName)
-	v.SetConfigType("json")
-
-	if err := v.ReadInConfig(); err != nil {
-		return err
-	}
-
-	Cfg[cfgName] = v
-	return nil
-}
-
-// GetCfg 获取指定的子配置实例，如果不存在则返回 nil
-func GetCfg(cfgName string) *viper.Viper {
-	return Cfg[cfgName]
-}
-
-// MustGetCfg 获取指定的子配置实例，如果不存在则 panic
-func MustGetCfg(cfgName string) *viper.Viper {
-	cfg := Cfg[cfgName]
-	if cfg == nil {
-		log.Panicf("配置 '%s' 不存在", cfgName)
-	}
-	return cfg
-}
-
-// ReloadCfg 重新加载指定的子配置文件
-func ReloadCfg(cfgName string) error {
-	return loadCfgFile(cfgName)
 }
 
 // GetConfigPath 获取配置文件路径（用于调试）

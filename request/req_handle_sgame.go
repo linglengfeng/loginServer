@@ -2,7 +2,6 @@ package request
 
 import (
 	"loginServer/src/db"
-	"loginServer/src/db/db_mysql"
 	"loginServer/src/log"
 	"net/http"
 	"strconv"
@@ -47,12 +46,12 @@ func handle_reportServerList(c *gin.Context) {
 	}
 
 	// 预分配切片容量，避免 append 时的多次内存分配
-	serverModels := make([]db_mysql.GameList, 0, len(reqs))
+	serverModels := make([]db.GameList, 0, len(reqs))
 
 	for _, req := range reqs {
 		// 组装单个 DB 模型
 		// 因为 req 中的字段本身就是指针 (*string, *int)，直接赋值即可
-		model := db_mysql.GameList{
+		model := db.GameList{
 			ClusterID: req.ClusterID,
 			GameID:    req.GameID,
 			Name:      req.Name,
@@ -73,8 +72,8 @@ func handle_reportServerList(c *gin.Context) {
 		return
 	}
 
-	//更新缓存
-	UpdateCacheServerList(serverModels)
+	// 更新缓存
+	db.UpdateCacheServerList(serverModels)
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "批量上报成功", nil))
 }
 
@@ -95,13 +94,13 @@ func handle_changeServerState(c *gin.Context) {
 		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误: 需要 cluster_id, game_id, state", nil))
 		return
 	}
-	serverModels := make([]db_mysql.GameList, 0, len(req))
+	serverModels := make([]db.GameList, 0, len(req))
 
 	for _, req := range req {
 		if req.State == nil {
 			continue
 		}
-		model := db_mysql.GameList{
+		model := db.GameList{
 			ClusterID: req.ClusterID,
 			GameID:    req.GameID,
 			State:     req.State,
@@ -118,8 +117,8 @@ func handle_changeServerState(c *gin.Context) {
 		return
 	}
 
-	//更新缓存
-	UpdateCacheServerList(serverModels)
+	// 更新缓存
+	db.UpdateCacheServerList(serverModels)
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "上报成功", nil))
 }
 
@@ -146,7 +145,7 @@ func handle_SetUserHistory(c *gin.Context) {
 		return
 	}
 
-	newItem := db_mysql.PlayerHistoryItem{
+	newItem := db.PlayerHistoryItem{
 		ClusterID: req.ClusterID,
 		GameID:    req.GameID,
 		PlayerID:  req.PlayerID,

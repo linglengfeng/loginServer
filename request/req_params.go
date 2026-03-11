@@ -257,7 +257,7 @@ func ParseRequestParams(c *gin.Context) (mergedParams map[string]any, rawBody st
 	}
 
 	// 打印解析出来的参数（一行输出）
-	log.Info("ParseRequestParams - method: %s, path: %s, content_type: %s, raw_body: %s, body_params: %v, query_params: %v, merged_params: %v",
+	log.Debug("ParseRequestParams - method: %s, path: %s, content_type: %s, raw_body: %s, body_params: %v, query_params: %v, merged_params: %v",
 		c.Request.Method,
 		c.Request.URL.Path,
 		c.GetHeader("Content-Type"),

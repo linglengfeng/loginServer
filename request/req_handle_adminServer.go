@@ -2,7 +2,6 @@ package request
 
 import (
 	"loginServer/src/db"
-	"loginServer/src/db/db_mysql"
 	"loginServer/src/log"
 	"net/http"
 	"strconv"
@@ -27,7 +26,7 @@ type PageReq struct {
 // handle_createLoginNotice 创建公告
 // POST /loginNotice/create
 func handle_createLoginNotice(c *gin.Context) {
-	var notice db_mysql.LoginNotice
+	var notice db.LoginNotice
 	if err := c.ShouldBindJSON(&notice); err != nil {
 		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误", nil))
 		return
@@ -40,34 +39,30 @@ func handle_createLoginNotice(c *gin.Context) {
 	}
 
 	// 自动刷新缓存
-	UpdateNoticeList()
+	db.UpdateNoticeList()
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "创建成功", nil))
 }
 
 // handle_deleteLoginNotice 删除公告
 // POST /loginNotice/delete (GVA 转发过来的是 POST JSON Body)
 func handle_deleteLoginNotice(c *gin.Context) {
-	var Id uint64
-
 	params, _, _ := ParseRequestParams(c)
 
-	IdStr := GetParamString(params, c, "id")
-
-	if IdStr == "" {
+	// 直接按数字获取 id，支持 JSON 数字和字符串形式
+	idVal := GetParamInt64(params, c, "id", 0)
+	if idVal <= 0 {
 		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "id不能为空", nil))
 		return
 	}
 
-	if idVal, err := strconv.ParseUint(IdStr, 10, 64); err == nil {
-		Id = idVal
-	}
+	Id := uint64(idVal)
 
 	if err := db.DeleteLoginNotice(Id); err != nil {
 		c.JSON(http.StatusOK, retResponse(CodeError, "删除失败", nil))
 		return
 	}
 
-	UpdateNoticeList()
+	db.UpdateNoticeList()
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "删除成功", nil))
 }
 
@@ -85,14 +80,14 @@ func handle_batchDeleteLoginNotice(c *gin.Context) {
 		return
 	}
 
-	UpdateNoticeList()
+	db.UpdateNoticeList()
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "批量删除成功", nil))
 }
 
 // handle_updateLoginNotice 更新公告
 // POST /loginNotice/update
 func handle_updateLoginNotice(c *gin.Context) {
-	var notice db_mysql.LoginNotice
+	var notice db.LoginNotice
 	if err := c.ShouldBindJSON(&notice); err != nil {
 		c.JSON(http.StatusOK, retResponse(CodeBadRequest, "参数错误", nil))
 		return
@@ -103,7 +98,7 @@ func handle_updateLoginNotice(c *gin.Context) {
 		return
 	}
 
-	UpdateNoticeList()
+	db.UpdateNoticeList()
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "更新成功", nil))
 }
 
@@ -168,13 +163,13 @@ type WhitelistSetReq struct {
 // WhitelistAddReq 添加IP请求
 type WhitelistAddReq struct {
 	ApiGroup string `json:"api_group" binding:"required"` // API分组
-	IP       string `json:"ip" binding:"required"`         // 要添加的IP（支持CIDR格式）
+	IP       string `json:"ip" binding:"required"`        // 要添加的IP（支持CIDR格式）
 }
 
 // WhitelistRemoveReq 删除IP请求
 type WhitelistRemoveReq struct {
 	ApiGroup string `json:"api_group" binding:"required"` // API分组
-	IP       string `json:"ip" binding:"required"`         // 要删除的IP
+	IP       string `json:"ip" binding:"required"`        // 要删除的IP
 }
 
 // handle_getWhitelist 获取指定分组的白名单
@@ -187,7 +182,7 @@ func handle_getWhitelist(c *gin.Context) {
 	}
 
 	ips := GetWhitelist(apiGroup)
-	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", map[string]interface{}{
+	c.JSON(http.StatusOK, retResponse(CodeSuccess, "", map[string]any{
 		"api_group": apiGroup,
 		"ips":       ips,
 	}))

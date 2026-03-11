@@ -11,7 +11,7 @@ import (
 // handle_getServerList 获取服务器列表处理函数
 // GET /loginServer/getServerList
 func handle_getServerList(c *gin.Context) {
-	servers, err := GetServerList()
+	servers, err := db.GetServerList()
 	if err != nil {
 		log.Error("handle_getServerList failed, err: %v", err)
 		c.JSON(http.StatusOK, retResponse(CodeError, "获取服务器列表失败", nil))
@@ -49,8 +49,8 @@ func handle_getPlayerServerList(c *gin.Context) {
 // handle_clientGetLoginNotice 客户端(游戏)获取公告
 // GET /loginServer/getLoginNotice
 func handle_clientGetLoginNotice(c *gin.Context) {
-	// 直接走内存缓存，无需查库，高性能
-	list, _ := GetLoginNotice()
+	// 直接走 Redis 缓存，无需查库，高性能
+	list, _ := db.GetLoginNotice()
 
 	// 返回给客户端的数据结构，根据你的客户端协议定义
 	c.JSON(http.StatusOK, retResponse(CodeSuccess, "获取成功", list))

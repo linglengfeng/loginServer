@@ -2,11 +2,10 @@ package request
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"loginServer/config"
+	"loginServer/src/db"
 	"loginServer/src/log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,7 +17,7 @@ import (
 
 // initCache 初始化缓存，从数据库加载服务器列表
 func initCache() {
-	servers, err := GetServerList()
+	servers, err := db.GetServerList()
 	if err != nil {
 		log.Error("initCache failed, err:%v", err)
 		return
@@ -42,8 +41,11 @@ func createHTTPServer(addr string, handler http.Handler) *http.Server {
 // Start 启动 HTTP 服务器
 func Start() {
 	initCache()
-	// 初始化IP白名单（优先从数据库加载，失败则从配置文件加载）
-	InitWhitelistFromDB()
+	// 初始化IP白名单（从数据库加载，失败则退出）
+	if err := InitWhitelistFromDB(); err != nil {
+		log.Error("初始化白名单失败: %v", err)
+		os.Exit(1)
+	}
 
 	// 获取并设置 Gin 运行模式
 	ginmod := config.Config.GetString("gin.mod")
@@ -58,16 +60,11 @@ func Start() {
 	ip := config.Config.GetString("gin.ip")
 	port := config.Config.GetString("gin.port")
 
-	// 2. 判断是否需要获取真实局域网 IP
+	// 2. 如果配置为空、127.0.0.1 或 localhost，则监听所有网络接口（0.0.0.0）
+	// 这样既可以从 127.0.0.1 访问，也可以从局域网 IP 访问
 	if ip == "" || ip == "127.0.0.1" || ip == "localhost" {
-		realIP, err := getLocalIPv4()
-		if err != nil {
-			log.Error("获取本地真实IPv4失败，回退到 127.0.0.1: %v", err)
-			ip = "127.0.0.1"
-		} else {
-			ip = realIP
-			log.Info("检测到本地 IP，服务将绑定到: %s", ip)
-		}
+		ip = "0.0.0.0"
+		log.Info("配置为本地地址，服务将监听所有网络接口: %s", ip)
 	}
 
 	// 3. 拼接地址 (注意：这里必须使用变量 ip，而不是再去读 config)
@@ -96,9 +93,9 @@ func Start() {
 	gracefulExitServer(server)
 }
 
-// Stop 停止服务（预留函数，可在关闭时执行清理操作）
+// Stop 停止服务（关闭数据库连接等清理操作）
 func Stop() {
-	// 预留清理操作
+	db.Close()
 }
 
 // gracefulExitServer 优雅关闭服务器，监听系统信号并安全关闭
@@ -125,24 +122,4 @@ func gracefulExitServer(server *http.Server) {
 	} else {
 		log.Info("HTTP server shutdown successfully, took: %v", time.Since(startTime))
 	}
-}
-
-// getLocalIPv4 获取本机首个非回环的 IPv4 地址
-func getLocalIPv4() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-
-	for _, address := range addrs {
-		// 检查 ip 地址判断是否回环地址
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			// 必须是 IPv4
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
-			}
-		}
-	}
-
-	return "", errors.New("cannot find local IP address")
 }

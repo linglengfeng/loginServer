@@ -7,7 +7,6 @@ import (
 	"loginServer/shell"
 	"loginServer/src/db"
 	"loginServer/src/log"
-	"loginServer/src/mailer"
 	"os"
 	"time"
 )
@@ -17,14 +16,12 @@ func main() {
 		fmt.Println("log start failed:", err)
 		os.Exit(1)
 	}
-	log.Info("log start successed...")
+	log.Info("log start succeeded...")
 	if err := db.Start(); err != nil {
 		log.Error("db start failed: %v", err)
 		os.Exit(1)
 	}
-	log.Info("db start successed...")
-	mailer.Start()
-	log.Info("sendgrid start successed...")
+	log.Info("db start succeeded...")
 
 	if len(os.Args) > 1 && os.Args[1] == "shell" {
 		go request.Start() // Gin 在后台运行

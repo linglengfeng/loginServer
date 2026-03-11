@@ -1,9 +1,9 @@
 {
     "server_mod": "dev",
-    "server_name": "loginServer",
+    "server_name": "loginServer2",
     "gin": {
         "ip": "127.0.0.1",
-        "port": "9100",
+        "port": "9101",
         "mod": "debug"
     },
     "log": {

@@ -4,6 +4,14 @@ REM Build backend binary for Linux (amd64)
 REM Switch to repo root (one level up from deploy)
 cd /d "%~dp0.."
 
+REM Copy root config.json to deploy, overwriting deploy/config.json
+copy /y "config.json" "%~dp0config.json" >nul
+IF %ERRORLEVEL% NEQ 0 (
+    echo Warning: Failed to copy config.json to deploy folder.
+) ELSE (
+    echo Copied config.json to deploy/config.json
+)
+
 REM Set Go env
 set GOOS=linux
 set GOARCH=amd64

@@ -20,6 +20,12 @@
         "password": "123456",
         "db": "loginServer"
     },
+    "redis": {
+        "ip": "127.0.0.1",
+        "port": "6379",
+        "db": "1",
+        "password": "123456"
+    },
     "ip_whitelist": {
         "sgame": [
             "127.0.0.1"
@@ -27,7 +33,5 @@
         "adminServer": [
             "127.0.0.1"
         ]
-
-    },
-    "config_dir": "../config/cfg"
+    }
 }

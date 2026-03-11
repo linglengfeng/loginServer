@@ -12,9 +12,9 @@ import (
 
 // 统一响应结构
 type Response struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
 const (
@@ -22,6 +22,7 @@ const (
 	CodeSuccess    = 0    // 成功
 	CodeError      = 1001 // 一般错误
 	CodeBadRequest = 1002 // 参数错误
+	CodeForbidden  = 1003 // 禁止访问
 
 	// 状态码对应的默认消息
 	MsgSuccess    = "success"
@@ -77,7 +78,7 @@ func setupMiddleware(req *gin.Engine) {
 		allowed, errMsg := shouldDisableRoute(c)
 		if !allowed {
 			log.Info("request can't used, err:%v", errMsg)
-			c.AbortWithStatusJSON(http.StatusForbidden, retResponse(CodeBadRequest, errMsg, nil))
+			c.AbortWithStatusJSON(http.StatusForbidden, retResponse(CodeForbidden, errMsg, nil))
 			return
 		}
 		c.Next()
@@ -201,6 +202,5 @@ func checkLimitApi(fullpath string, c *gin.Context) (bool, string) {
 //   - []: 配置存在但为空列表，表示不允许任何IP访问
 //   - [ip1, ip2, ...]: 配置了白名单IP列表
 func getAllowedIPsByGroup(apiGroup string) []string {
-	// 使用动态白名单管理器
 	return GetAllowedIPsByGroup(apiGroup)
 }
